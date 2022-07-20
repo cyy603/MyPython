@@ -1,8 +1,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import math
-from scipy.spatial.distance import cdist
 import RW
+from scipy.spatial.distance import cdist
+
+f = lambda x : np.sin(x) + 0.1 * np.cos(2 * x)
+y = lambda x, s : f(x) + np.random.normal(0, np.sqrt(s), x.shape) # generate noisy observation
+
+def plot_training_data(x_train, y_train, x_star):
+    plt.figure(figsize = (12, 12))
+    plt.plot(x_star, f(x_star), color = 'r', label = 'underlying function')
+    plt.scatter(x_train, y_train, color = 'b', label = 'training data')
+    plt.legend()
+    plt.show()
 
 def kernel(x1, x2, sigma_f, l):
     """
@@ -25,8 +34,6 @@ def sample(mu, var, jitter, N):
     f_post = mu + L @ np.random.normal(size = (n, N))
 
     return f_post
-
-f = lambda x : np.sin(x) + 0.1 * np.cos(2 * x)
 
 def plot_posterior(x_train, y_train, x_star, mu, var):
     samples = 30
@@ -57,55 +64,25 @@ def plot_posterior(x_train, y_train, x_star, mu, var):
 
 
 if __name__ == '__main__':
-    n = 100 #number of prediction points
+    n = 100  # number of prediction points
     x_min = -5
     x_max = 5
-    x_star = np.linspace(x_min * 1.4, x_max * 1.4, n).reshape(-1, 1) #prediction points
+    x_star = np.linspace(x_min * 1.4, x_max * 1.4, n).reshape(-1, 1)  # prediction points
     jitter = 1e-10
-    l = 1 #hyper-perameter length-scale
-    N = 12 # number of training points
+    l = 1  # hyperparameter length-scale
+    N = 12  # number of training points
     sigma_f = 1
+    x = np.random.uniform(x_min, x_max, size=(N, 1))  # training inputs
+    var_noise_ran = 0.01
 
-    Kss = kernel(x_star, x_star, sigma_f, l)#prior convariance
+    y_train = y(x, var_noise_ran)
 
-    Ns = 10#number of samples
-    f_prior = sample(0, Kss, jitter, Ns)
+    #plot_training_data(x, y_train, x_star)
 
-    #compute standard divation of sample
+    var_f = 1
+    var_noise = 0.1
 
-    std = np.sqrt(np.diag(Kss))
+    mu, var = RW.gp_regression_noisy(x, y_train, kernel, x_star, var_noise, var_f, l)
 
-    x = np.random.uniform(x_min, x_max, size = (N, 1))# training inputs
+    plot_posterior(x, y_train, x_star, mu, var)
 
-    y_train = f(x)
-
-    mu, var = RW.gp_regression(x, y_train, kernel, x_star, sigma_f, l)
-
-    #plot_posterior(x, y_train, x_star, mu, var)
-
-
-
-"""
-    #plot the training data
-    plt.figure()
-
-    plt.plot(x_star, f(x_star), color = "r", label = "underlying function")
-    plt.scatter(x, y_train, color = "b", label = "Training data points")
-    plt.legend()
-    plt.show()
-
-
-    fig = plt.figure(figsize = (12, 12))
-    plt.subplots_adjust(wspace = 0.3, hspace = 0.5)
-
-    plt.subplot(2, 2, 1)
-    plt.plot(x_star, f_prior)
-    plt.title("%i samples from the GP prior"% Ns)
-    plt.fill_between(x_star.flatten(), 0-2 * std, 0+2 * std, label = '$\pm$2 standard deviations of posterior', color="#dddddd")
-
-    #visualize the covariance function
-    plt.subplot(2, 2, 2)
-    plt.title("Prior covariance $K(X_*, X_*)$")
-    plt.contourf(Kss)
-    plt.show()
-"""
