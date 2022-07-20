@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import RW
+import Optimizer
 from scipy.spatial.distance import cdist
 
 f = lambda x : np.sin(x) + 0.1 * np.cos(2 * x)
@@ -69,7 +70,7 @@ if __name__ == '__main__':
     x_max = 5
     x_star = np.linspace(x_min * 1.4, x_max * 1.4, n).reshape(-1, 1)  # prediction points
     jitter = 1e-10
-    l = 1  # hyperparameter length-scale
+    #l = 1  # hyperparameter length-scale
     N = 12  # number of training points
     sigma_f = 1
     x = np.random.uniform(x_min, x_max, size=(N, 1))  # training inputs
@@ -79,10 +80,11 @@ if __name__ == '__main__':
 
     #plot_training_data(x, y_train, x_star)
 
-    var_f = 1
-    var_noise = 0.1
+    #var_f = 1
+    #var_noise = 0.1
+
+    var_f, l, var_noise = Optimizer.optimize(x, y_train, kernel, x_star)
 
     mu, var = RW.gp_regression_noisy(x, y_train, kernel, x_star, var_noise, var_f, l)
-
     plot_posterior(x, y_train, x_star, mu, var)
 
