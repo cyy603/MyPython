@@ -19,6 +19,7 @@ def deriv_mse_loss(y_true, y_pred):
 
 
 def deriv_sigmoid(x):
+
     return sigmoid(x) * (1 - sigmoid(x))
 
 
@@ -30,14 +31,44 @@ class Neuron:
         self.weight = weight
         self.bias = bias
         self.total = 0
-        self.d_h_d_w = 0
-        self.d_h_d_b = 0
 
     def feedforward(self, X):
         total = np.dot(self.weight, X) + self.bias
         self.total = total
 
         return sigmoid(total)
+
+    def form_d_H_d_w(self):
+        """
+        This function is a tool function of back propagation, which is used to calculate the partial derivative
+        of active function with respect to the certain variable.
+        To achieve this goal, following rule are made to simplify and proceed the program on back propagation:
+
+            The path, which before the target variable of back propagation must strictly follow
+            a straight line in neural network. In other word, divergence of back propagation's path
+            must happen at its final step of reaching the target variable
+            eg:
+            ******************************************************************************
+
+            Input_1 ------ Hidden layer_1 ------ Hidden layer_3
+
+            Input_2 ------ Hidden layer_2 ------ Hidden layer_4
+
+            ********************************************************************************
+            Above path describe how back propagation push from last hidden layer to first hidden layer.
+            In each layer, function calculate a derivative matrix d_H_d_w which contains the partial
+            derivative wrt ith weight of ith neuron in jth layer.
+
+        :return: partial derivative matrix wrt particular weight
+        """
+
+        d_H_d_w = np.zeros((len(self.weight), 1))
+        for i in range(len(self.weight)):
+            weight = self.weight[i]
+
+            d_H_d_w[i] = weight * deriv_sigmoid(self.total)
+
+        return d_H_d_w
 
 
 class Layer:
@@ -67,8 +98,7 @@ class Layer:
 
         return result
 
-    def d_Y_d_x(self):
-        pass
+
 
 class Network:
     def __init__(self, layer_num, layer_size, input):
@@ -125,9 +155,33 @@ class Network:
         :return: Weight that adjusted by the back propagation process (matrix)
         """
         p_L_p_Y_pred = deriv_mse_loss(y_true, y_pred)
-
-        for i in range(self.layer_num - 1, -1, -1):
+        former_derivative = []
+        for i in range(self.layer_num - 1, -1, -1): # traverse layers
             layer = self.sequential[i]
+            for j in range(layer.size): # traverse each neuron
+                neuron = layer.receptacle[j]
+                for k in range(len(neuron.weight)): # traverse weights in each neuron
+                    if i == self.layer_num - 1:
+                        d_H_d_w = neuron.form_d_H_d_w()
+                        former_derivative.append(d_H_d_w)
+                        change = p_L_p_Y_pred * d_H_d_w
+                        neuron.weight -= lr * change # update weight
+
+                    else:
+                        backtrack = self.layer_num - i - 1
+                        d_H_d_w = neuron.form_d_H_d_w()
+                        recall = 1
+                        for i in range(backtrack):
+                            recall *= former_derivative[i][i]
+                        change = p_L_p_Y_pred * recall * d_H_d_w
+                        neuron.weight -= lr * change # update weight
+
+    def train(self, epoch, X, y_true, lr):
+        for i in range(epoch):
+            y_pred = self.feed_forward(X)
+            self.back_propagation(y_pred, y_true, lr)
 
 
+if __name__ == '__main__':
+    X = []
 
